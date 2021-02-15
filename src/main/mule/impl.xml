@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<s3:config name="Amazon_S3_Configuration" doc:name="Amazon S3 Configuration" doc:id="ce94cc32-618c-45f6-9dec-15efe800ed11" >
+		<s3:basic-connection accessKey="AKIA5PVTP76IZKTFNFA5" secretKey="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" region="US_EAST_2"/>
+	</s3:config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="2c5780fe-a186-4d6b-a751-3382f228b226" >
+		<http:request-connection host="dummy.restapiexample.com" />
+	</http:request-config>
+	<sub-flow name="createObjectSubflow" doc:id="7214d712-a587-46a3-8062-02e2243d66e4" >
+		<http:request method="GET" doc:name="Request" doc:id="37d34dee-5420-48d0-b523-57e61d8e7964" config-ref="HTTP_Request_configuration" path="/api/v1/employees"/>
+		<logger level="INFO" doc:name="Logger" doc:id="6d906ce9-4829-4dd0-b297-ca219676b3c7" message="logging employees #[payload]"/>
+		<s3:create-object doc:name="Create object" doc:id="5feeae58-19f7-481a-bcc6-353f48ec08c4" config-ref="Amazon_S3_Configuration" bucketName="aws-first-s3bucket" key="#['EmpFile' ++ (now() as String {format: 'yyyy-MM-dd-hh-mm-ss'}) ++ '.json']"/>
+		<ee:transform doc:name="Transform Message" doc:id="6f21e619-36c7-4f93-aa04-39afc99beba6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Object Successfully Created",
+	"last-modified": now()
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="getObjectSubflow" doc:id="221b4e7f-7b0e-478f-b938-0ae52d82c9ea" >
+		<s3:get-object doc:name="Get object" doc:id="8af249cf-7c2d-49b0-ad43-96faff2ac0b3" config-ref="Amazon_S3_Configuration" bucketName="aws-first-s3bucket" key="#[vars.employeeID]"/>
+		<ee:transform doc:name="Transform Message" doc:id="5830d0fe-2574-427f-97c6-6e62041b44fc" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+read((payload as String replace /\&/ with '"')) ++ {retrievaleTime: now()}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="1f7d24e0-8bc0-440b-901e-e83965410e05" message="logging employees data #[payload]" />
+	</sub-flow>
+	
+		<sub-flow name="deleteObjectSubflow" doc:id="c4b2c261-ba14-408b-abad-7e7a5eb37996" >
+		<s3:delete-object doc:name="Delete object" doc:id="293130b5-86ca-43ab-b87b-3df0c7ba2080" config-ref="Amazon_S3_Configuration" bucketName="aws-first-s3bucket" key="#[vars.employeeID]"/>
+		<ee:transform doc:name="Transform Message" doc:id="09bf87f1-1e4c-423c-b2fa-ff9d8a466d23" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Object Successfully Deleted",
+	"statusCode": 200
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="eedd4c7c-c8a6-4935-afac-f0207f8d7c03" message="logging employees data #[payload]" />
+	
+</sub-flow>
+
+</mule>
