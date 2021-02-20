@@ -50,7 +50,8 @@ output application/json
 ---
 {
 	"message": "Object Successfully Deleted",
-	"statusCode": 200
+	"statusCode": 200,
+	"last-modified": now()
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
